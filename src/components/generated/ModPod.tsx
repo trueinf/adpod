@@ -177,6 +177,57 @@ const transcribeVideo = async (file: File, apiKey: string): Promise<string> => {
   }
 };
 
+const translateText = async (text: string, targetLang: string, apiKey: string): Promise<string> => {
+  if (!text.trim() || !targetLang) {
+    console.warn('Translation skipped: missing text or target language', { hasText: !!text.trim(), targetLang });
+    return '';
+  }
+
+  if (!apiKey || !apiKey.trim()) {
+    throw new Error('API key is required for translation');
+  }
+
+  console.log('Calling translation API...', { targetLang, textLength: text.length, apiKeyPrefix: apiKey.substring(0, 10) + '...' });
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey.trim()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate the following text to ${targetLang}. Only return the translated text, nothing else.`
+          },
+          {
+            role: "user",
+            content: text
+          }
+        ],
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: { message: `HTTP ${response.status}: ${response.statusText}` } }));
+      console.error('Translation API error:', errorData);
+      throw new Error(errorData.error?.message || `Translation failed: HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const translated = data.choices[0]?.message?.content || '';
+    console.log('Translation successful:', { translatedLength: translated.length });
+    return translated;
+  } catch (error) {
+    console.error("Translation error:", error);
+    throw error; // Re-throw to let the caller handle it
+  }
+};
+
 const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey: string, country: Region): Promise<ModerationResult> => {
   // Sample 1 frame every 2.5 seconds (approx every 5th frame if 0.5sec intervals, or adjust logic based on extraction)
   // Assuming frames are extracted 1/0.5sec for first 60s, then 1/5sec.
@@ -661,6 +712,11 @@ export const ModPod = ({
   const [isProcessingFrames, setIsProcessingFrames] = React.useState(false);
   const [transcript, setTranscript] = React.useState('');
   const [isTranscribing, setIsTranscribing] = React.useState(false);
+  const [transcriptTab, setTranscriptTab] = React.useState<'transcript' | 'translate'>('transcript');
+  const [translatedText, setTranslatedText] = React.useState('');
+  const [targetLanguage, setTargetLanguage] = React.useState<string>('');
+  const [isTranslating, setIsTranslating] = React.useState(false);
+  const translatingRef = React.useRef(false);
   const [apiKey, setApiKey] = React.useState(import.meta.env.VITE_OPENAI_API_KEY || ''); // Allow setting via env or UI
   const [moderationResult, setModerationResult] = React.useState<ModerationResult | null>(null);
   const [isModerating, setIsModerating] = React.useState(false);
@@ -675,6 +731,82 @@ export const ModPod = ({
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  // Trigger transcription when API key is set after video is uploaded
+  React.useEffect(() => {
+    const transcribeIfNeeded = async () => {
+      if (
+        apiKey &&
+        uploadedFile &&
+        uploadedFile.type.startsWith('video/') &&
+        !transcript &&
+        !isTranscribing &&
+        activeTab === 'video'
+      ) {
+        setIsTranscribing(true);
+        try {
+          const transcriptionText = await transcribeVideo(uploadedFile, apiKey);
+          setTranscript(transcriptionText);
+        } catch (error) {
+          console.error("Transcription error:", error);
+          setTranscript(`Error: ${error instanceof Error ? error.message : "Failed to transcribe video"}`);
+        } finally {
+          setIsTranscribing(false);
+        }
+      }
+    };
+
+    transcribeIfNeeded();
+  }, [apiKey, uploadedFile, transcript, isTranscribing, activeTab]);
+
+  // Handle translation when language is selected
+  React.useEffect(() => {
+    const handleTranslation = async () => {
+      // Prevent concurrent translations
+      if (translatingRef.current) {
+        console.log('Translation already in progress, skipping...');
+        return;
+      }
+
+      if (transcript && targetLanguage && transcriptTab === 'translate' && apiKey) {
+        console.log('Translation conditions met:', { 
+          hasTranscript: !!transcript, 
+          targetLanguage, 
+          transcriptTab, 
+          hasApiKey: !!apiKey 
+        });
+        translatingRef.current = true;
+        setIsTranslating(true);
+        try {
+          console.log('Starting translation...', { targetLanguage, transcriptLength: transcript.length });
+          const translated = await translateText(transcript, targetLanguage, apiKey);
+          console.log('Translation result:', translated);
+          setTranslatedText(translated);
+        } catch (error) {
+          console.error("Translation error:", error);
+          setTranslatedText(`Error: ${error instanceof Error ? error.message : "Failed to translate"}`);
+        } finally {
+          setIsTranslating(false);
+          translatingRef.current = false;
+        }
+      } else if (!targetLanguage && transcriptTab === 'translate') {
+        setTranslatedText('');
+      }
+    };
+
+    // Only trigger if we're on translate tab and have all required data
+    if (transcriptTab === 'translate') {
+      if (transcript && targetLanguage && apiKey) {
+        handleTranslation();
+      } else {
+        console.log('Translation not triggered:', { 
+          hasTranscript: !!transcript, 
+          hasTargetLanguage: !!targetLanguage, 
+          hasApiKey: !!apiKey 
+        });
+      }
+    }
+  }, [transcript, targetLanguage, transcriptTab, apiKey]);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const handleDrag = (e: React.DragEvent) => {
@@ -1024,18 +1156,112 @@ export const ModPod = ({
                                         <span className="ml-3 text-sm text-[#808080]">Transcribing audio...</span>
                                     </div>
                                 ) : transcript ? (
-                                    <div className="bg-[#1a1a1a] rounded border border-[#2a2a2a] p-4 relative group">
-                                        <p className="text-sm text-[#b3b3b3] whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent">
-                                            {transcript}
-                                        </p>
-                                        <button 
-                                            onClick={() => navigator.clipboard.writeText(transcript)}
-                                            className="absolute top-2 right-2 p-1.5 bg-[#2a2a2a] rounded text-[#808080] opacity-0 group-hover:opacity-100 transition-opacity hover:text-white"
-                                            title="Copy to clipboard"
-                                        >
-                                            <FileText size={14} />
-                                        </button>
-                                    </div>
+                                    <>
+                                        {/* Tabs */}
+                                        <div className="flex border-b border-[#2a2a2a] mb-3">
+                                            <button
+                                                onClick={() => setTranscriptTab('transcript')}
+                                                className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                                                    transcriptTab === 'transcript'
+                                                        ? 'text-white'
+                                                        : 'text-[#808080] hover:text-[#b3b3b3]'
+                                                }`}
+                                            >
+                                                Audio Transcript
+                                                {transcriptTab === 'transcript' && (
+                                                    <motion.div
+                                                        layoutId="transcriptTab"
+                                                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e50914]"
+                                                        initial={false}
+                                                        transition={{
+                                                            type: 'spring',
+                                                            stiffness: 500,
+                                                            damping: 30
+                                                        }}
+                                                    />
+                                                )}
+                                            </button>
+                                            <button
+                                                onClick={() => setTranscriptTab('translate')}
+                                                className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                                                    transcriptTab === 'translate'
+                                                        ? 'text-white'
+                                                        : 'text-[#808080] hover:text-[#b3b3b3]'
+                                                }`}
+                                            >
+                                                Translate
+                                                {transcriptTab === 'translate' && (
+                                                    <motion.div
+                                                        layoutId="transcriptTab"
+                                                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#e50914]"
+                                                        initial={false}
+                                                        transition={{
+                                                            type: 'spring',
+                                                            stiffness: 500,
+                                                            damping: 30
+                                                        }}
+                                                    />
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Tab Content */}
+                                        {transcriptTab === 'transcript' ? (
+                                            <div className="bg-[#1a1a1a] rounded border border-[#2a2a2a] p-4 relative group">
+                                                <p className="text-sm text-[#b3b3b3] whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent">
+                                                    {transcript}
+                                                </p>
+                                                <button 
+                                                    onClick={() => navigator.clipboard.writeText(transcript)}
+                                                    className="absolute top-2 right-2 p-1.5 bg-[#2a2a2a] rounded text-[#808080] opacity-0 group-hover:opacity-100 transition-opacity hover:text-white"
+                                                    title="Copy to clipboard"
+                                                >
+                                                    <FileText size={14} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                <div className="flex items-center gap-3">
+                                                    <label className="text-sm text-[#b3b3b3] whitespace-nowrap">Translate to:</label>
+                                                    <select
+                                                        value={targetLanguage}
+                                                        onChange={(e) => setTargetLanguage(e.target.value)}
+                                                        className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-[#e50914] focus:border-transparent"
+                                                    >
+                                                        <option value="">Select a language</option>
+                                                        <option value="English">English</option>
+                                                        <option value="French">French</option>
+                                                        <option value="German">German</option>
+                                                        <option value="Hindi">Hindi</option>
+                                                    </select>
+                                                </div>
+                                                
+                                                {isTranslating ? (
+                                                    <div className="flex items-center justify-center py-8 bg-[#1a1a1a] rounded border border-[#2a2a2a]">
+                                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#e50914]"></div>
+                                                        <span className="ml-3 text-sm text-[#808080]">Translating...</span>
+                                                    </div>
+                                                ) : translatedText ? (
+                                                    <div className="bg-[#1a1a1a] rounded border border-[#2a2a2a] p-4 relative group">
+                                                        <p className="text-sm text-[#b3b3b3] whitespace-pre-wrap max-h-40 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-[#2a2a2a] scrollbar-track-transparent">
+                                                            {translatedText}
+                                                        </p>
+                                                        <button 
+                                                            onClick={() => navigator.clipboard.writeText(translatedText)}
+                                                            className="absolute top-2 right-2 p-1.5 bg-[#2a2a2a] rounded text-[#808080] opacity-0 group-hover:opacity-100 transition-opacity hover:text-white"
+                                                            title="Copy to clipboard"
+                                                        >
+                                                            <FileText size={14} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center py-8 text-[#808080] bg-[#1a1a1a] rounded border border-[#2a2a2a]">
+                                                        <p className="text-sm">Select a language to translate</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="text-center py-8 text-[#808080] bg-[#1a1a1a] rounded border border-[#2a2a2a]">
                                         <p className="text-sm">No transcript available</p>
