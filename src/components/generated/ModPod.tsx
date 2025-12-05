@@ -121,7 +121,8 @@ const extractFramesFromVideo = async (file: File): Promise<VideoFrame[]> => {
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
           const minutes = Math.floor(currentTime / 60);
           const seconds = Math.floor(currentTime % 60);
-          const timestamp = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+          const fractionalSeconds = Math.floor((currentTime % 1) * 10);
+          const timestamp = `${minutes}:${seconds.toString().padStart(2, '0')}.${fractionalSeconds}`;
           
           frames.push({
             url: canvas.toDataURL('image/jpeg', 0.6),
@@ -129,8 +130,8 @@ const extractFramesFromVideo = async (file: File): Promise<VideoFrame[]> => {
           });
         }
         
-        // Strategy: 1 frame/sec up to 60s, then 1 frame/5sec
-        const interval = currentTime < 60 ? 1 : 5;
+        // Strategy: 1 frame/0.5sec up to 60s, then 1 frame/5sec
+        const interval = currentTime < 60 ? 0.5 : 5;
         currentTime += interval;
         processNextFrame();
       };
@@ -177,8 +178,8 @@ const transcribeVideo = async (file: File, apiKey: string): Promise<string> => {
 };
 
 const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey: string, country: Region): Promise<ModerationResult> => {
-  // Sample 1 frame every 5 seconds (approx every 5th frame if 1fps, or adjust logic based on extraction)
-  // Assuming frames are extracted 1/sec for first 60s, then 1/5sec.
+  // Sample 1 frame every 2.5 seconds (approx every 5th frame if 0.5sec intervals, or adjust logic based on extraction)
+  // Assuming frames are extracted 1/0.5sec for first 60s, then 1/5sec.
   // We'll just take every 5th frame to be safe and reduce payload.
   const sampledFrames = frames.filter((_, i) => i % 5 === 0);
   
@@ -188,144 +189,401 @@ Analyze the provided Video Transcript and Video Frames using the moderation chec
 
 The country value will always be one of the following: US, UK, IN, SA, KR.
 
+
+
+CRITICAL INSTRUCTIONS FOR COUNTRY-SPECIFIC ENFORCEMENT:
+
+1. Apply country-specific rules at the CATEGORY LEVEL (textChecks and visualChecks), not just in countryEvaluation. Each category check must reflect the strictness standards of the selected country.
+
+2. Saudi Arabia (SA) has ZERO TOLERANCE and MAXIMUM STRICTNESS:
+   - Any violation that would be "warning" in other countries MUST be "fail" for Saudi Arabia
+   - Any content with drugs, sexual imagery, illegal items, or children in unsafe contexts MUST automatically fail ALL relevant categories for SA
+   - When evaluating for Saudi Arabia, apply the strictest interpretation to EVERY category
+   - If ANY category fails for SA, the countryEvaluation.status MUST also be "fail"
+
+3. Strictness Hierarchy: SA (strictest) > IN > UK > KR > US (most lenient). Adjust category-level status accordingly.
+
+
+
 Transcript Moderation Checklist
 
-Check the transcript for:
+
+
+Evaluate the transcript for:
+
+
 
 Profanity & Offensive Language (swear words, slurs)
 
+
+
 Sexual or Inappropriate Content (suggestive phrases, adult services)
+
+
 
 Violent or Graphic Language (violence, threats, weapons, gore)
 
+
+
 Hate Speech or Discrimination (racism, sexism, religion, caste, disability)
+
+
 
 Gambling-Related Phrases (betting, casinos, fantasy sports, lotteries)
 
+
+
 Alcohol, Tobacco, or Drug References (drinking, smoking, cannabis)
+
+
 
 Political or Advocacy Messaging (candidates, parties, activism)
 
+
+
 Misinformation / Misleading Claims (unverified claims, false promises)
+
+
 
 Calls to Action to Minors (direct marketing to under 18)
 
+
+
 Frame (Image) Moderation Checklist
 
-Check each frame for:
+
+
+Evaluate visuals for:
+
+
 
 Adult / Sexual Imagery (nudity, lingerie, suggestive poses)
 
+
+
 Violence or Graphic Imagery (blood, weapons, injuries)
+
+
 
 Drugs, Alcohol, Smoking (bottles, cigarettes, vapes, cannabis)
 
+
+
 Gambling Visuals (chips, casino tables, betting screens)
+
+
 
 Hate Symbols (extremist flags, Nazi symbols)
 
+
+
 Children in Unsafe Contexts (danger, adult products)
+
+
 
 Political Symbols & Logos (campaign banners, flags, rallies)
 
+
+
 Brand & Competitor Logos (OnlyFans, Hulu, Netflix, alcohol logos, etc.)
+
+
 
 Illegal Items (firearms, counterfeit items, explosives)
 
+
+
 Country-Specific Rules
 
-Apply the following based on the selected country:
+
 
 🇺🇸 United States (US)
 
-Alcohol ads allowed only with 21+ disclaimer, no minors.
 
-Gambling allowed with 21+ and legal-state disclaimer.
 
-Cannabis allowed where legal, no minors, no medical claims without FDA.
+Alcohol allowed with 21+ disclaimer, no minors, no binge drinking, no implication of success/attractiveness/fitness improvement
 
-Political ads require funding disclosure and no misinformation.
+
+
+Gambling allowed with 21+ notice and state legality disclaimer, no guaranteed winnings
+
+
+
+Cannabis allowed where legal; no minors; no promotional smoking scenes; no unverified medical claims
+
+
+
+Political ads must include funding disclosure, no misinformation or voter suppression
+
+
+
+Kissing: light & brief only; no passionate or sexualized kissing; no minors
+
+
+
+Clothing: swimwear & casual attire allowed; no explicit lingerie or transparent clothing
+
+
 
 🇬🇧 United Kingdom (UK)
 
-Alcohol allowed but no binge drinking or linking to success/improved status.
 
-Gambling requires BeGambleAware.org or similar.
 
-Only non-psychoactive CBD allowed, no THC imagery.
+Alcohol allowed but no intoxication/excessive drinking or status-improvement claims
 
-No guaranteed investment or crypto returns.
+
+
+Gambling allowed with BeGambleAware.org messaging, no guaranteed returns
+
+
+
+CBD allowed only if non-psychoactive; no recreational cannabis or smoking imagery
+
+
+
+No guaranteed-profit financial claims
+
+
+
+Kissing: short & natural only; no minors; no erotic kissing
+
+
+
+Clothing: modern fashion ok; no hyper-sexual posing or see-through lingerie
+
+
 
 🇮🇳 India (IN)
 
-Alcohol & tobacco ads banned, including surrogate branding.
 
-Gambling, betting & fantasy sports restricted, must follow regional legality.
 
-No caste or religion-based political messaging.
+Alcohol & tobacco advertising fully banned, including surrogate branding
 
-No disrespect to national symbols or leaders.
 
-🇸🇦 Saudi Arabia (SA)
 
-Alcohol, gambling & pork images or references prohibited.
+Gambling/fantasy sports restricted by region; cannot promote income or minors participation
 
-No LGBTQ+ themes, sexually suggestive content, revealing clothing.
 
-Women must be portrayed in culturally appropriate attire.
 
-Religious material must respect Islamic values.
+Religious/caste political messaging banned; no divisive content
+
+
+
+National symbols must be respected
+
+
+
+Kissing: minimal PG-13 only; no passionate/extended kissing; no minors
+
+
+
+Clothing: standard fashion ok; no lingerie, transparent clothing, sexual posing, cleavage focus
+
+
+
+🇸🇦 Saudi Arabia (SA) - STRICTEST STANDARDS - ZERO TOLERANCE POLICY
+
+
+
+CRITICAL: Saudi Arabia has the strictest content moderation standards. Apply MAXIMUM STRICTNESS to ALL category checks.
+
+
+
+MANDATORY FAILURES (IMMEDIATE FAIL status required in relevant categories):
+
+
+
+- ANY drugs, illegal substances, or drug paraphernalia → "Drugs, Alcohol, Smoking" category = FAIL, "Illegal Items" category = FAIL
+
+
+
+- ANY sexual imagery, nudity, lingerie, suggestive poses, or adult content → "Adult / Sexual Imagery" category = FAIL
+
+
+
+- ANY children in unsafe contexts, with adult products, or in dangerous situations → "Children in Unsafe Contexts" category = FAIL
+
+
+
+- ANY illegal items (firearms, explosives, counterfeit items) → "Illegal Items" category = FAIL
+
+
+
+- Alcohol, gambling, pork strictly prohibited (visually or verbally) → "Drugs, Alcohol, Smoking" = FAIL, "Gambling Visuals" = FAIL, "Gambling-Related Phrases" = FAIL
+
+
+
+- No LGBTQ+ symbols or messaging → "Hate Speech or Discrimination" or "Political or Advocacy Messaging" = FAIL
+
+
+
+- No romantic or sexual content; any romantic kissing prohibited (even brief/light); no romantic touching → "Adult / Sexual Imagery" = FAIL
+
+
+
+- Clothing violations: any exposed shoulders, chest, midriff, legs above knee; tight body-con clothing; swimwear; shirtless men → "Adult / Sexual Imagery" = FAIL
+
+
+
+- Religious content must be respectful and not commercialized; any disrespect = FAIL
+
+
+
+- No nightclub/party/sensual dancing scenes → "Adult / Sexual Imagery" = FAIL
+
+
+
+ENFORCEMENT RULES FOR SA:
+
+
+
+1. If content contains ANY of the above violations, the corresponding category MUST be marked as "fail" (not "warning")
+
+2. If ANY category fails, countryEvaluation.status MUST be "fail"
+
+3. Be more strict than other countries - content that might pass elsewhere should fail for SA
+
+4. Apply zero tolerance - even minor violations should be flagged
+
+
 
 🇰🇷 South Korea (KR)
 
-Alcohol allowed but no drunkenness & no minors under 19.
 
-Gambling mostly illegal; online gambling banned.
 
-Tobacco ads prohibited except factual info in adult context.
+Alcohol allowed without intoxication or minors (under 19)
 
-Political messaging limited during election periods.
+
+
+Gambling mostly illegal; no online betting visuals
+
+
+
+Tobacco/e-cigarette ads banned except neutral info
+
+
+
+Political messaging restricted during elections
+
+
+
+Kissing: short/light only, no passionate or minors
+
+
+
+Clothing: modern fashion allowed; no lingerie-style outfits or sexual posing
+
+
 
 Required JSON Output Format
 
 {
-  "status": "pass" | "fail" | "warning",
+
+  "status": "pass | fail | warning",
+
   "textChecks": [
-    { "category": "Profanity & Offensive Language", "status": "pass" },
-    { "category": "Sexual or Inappropriate Content", "status": "fail", "reason": "Found suggestive phrase..." }
+
+    { "category": "Profanity & Offensive Language", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Sexual or Inappropriate Content", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Violent or Graphic Language", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Hate Speech or Discrimination", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Gambling-Related Phrases", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Alcohol, Tobacco, or Drug References", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Political or Advocacy Messaging", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Misinformation / Misleading Claims", "status": "pass | fail | warning", "reason": "" },
+
+    { "category": "Calls to Action to Minors", "status": "pass | fail | warning", "reason": "" }
+
   ],
+
   "visualChecks": [
-    { "category": "Adult / Sexual Imagery", "status": "pass" },
-    { "category": "Violence or Graphic Imagery", "status": "warning", "reason": "Possible weapon", "timestamp": "0:15" }
+
+    { "category": "Adult / Sexual Imagery", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Violence or Graphic Imagery", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Drugs, Alcohol, Smoking", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Gambling Visuals", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Hate Symbols", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Children in Unsafe Contexts", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Political Symbols & Logos", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Brand & Competitor Logos", "status": "pass | fail | warning", "reason": "", "timestamp": "" },
+
+    { "category": "Illegal Items", "status": "pass | fail | warning", "reason": "", "timestamp": "" }
+
   ],
+
   "countryEvaluation": {
-    "country": "<US | UK | IN | SA | KR>",
-    "status": "pass" | "fail" | "warning",
-    "reason": "Specific country rule violation if fail"
+
+    "country": "US | UK | IN | SA | KR",
+
+    "status": "pass | fail | warning",
+
+    "reason": ""
+
   },
-  "summary": "Brief explanation"
+
+  "summary": ""
+
 }
 
-IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 visual categories, even if they pass. If a category passes, reason is optional. The countryEvaluation must reflect whether the content violates any country-specific rules for the selected country: ${country}.`;
+
+
+IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 visual categories, even if they pass. If a category passes, reason is optional. 
+
+For Saudi Arabia (SA): Apply ZERO TOLERANCE. If content contains drugs, sexual imagery, illegal items, or children in unsafe contexts, those categories MUST be marked "fail" and countryEvaluation.status MUST be "fail". Be stricter than other countries - what might be "warning" elsewhere should be "fail" for SA.
+
+The countryEvaluation must reflect whether the content violates any country-specific rules for the selected country: ${country}.`;
+
+  const userContent: any[] = [
+    { 
+      type: "text", 
+      text: `Analyze this content for country: ${country}\n\nTranscript: "${transcript || '(No transcript provided)'}"` 
+    }
+  ];
+
+  // Only add frames if they exist
+  if (sampledFrames.length > 0) {
+    userContent.push(...sampledFrames.map((frame) => ({
+      type: "image_url",
+      image_url: {
+        url: frame.url,
+        detail: "low"
+      }
+    })));
+  }
 
   const messages: any[] = [
     { role: "system", content: systemPrompt },
     { 
       role: "user", 
-      content: [
-        { type: "text", text: `Analyze this content for country: ${country}\n\nTranscript: "${transcript}"` },
-        ...sampledFrames.map((frame, index) => ({
-          type: "image_url",
-          image_url: {
-            url: frame.url,
-            detail: "low"
-          }
-        }))
-      ]
+      content: userContent
     }
   ];
 
   try {
+    // Validate API key
+    if (!apiKey || !apiKey.trim()) {
+      throw new Error("OpenAI API key is required. Please provide a valid API key.");
+    }
+
+    // Ensure we have at least transcript or frames
+    if (!transcript.trim() && sampledFrames.length === 0) {
+      throw new Error("No content to moderate. Please provide a transcript or video frames.");
+    }
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -336,19 +594,44 @@ IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 vi
         model: "gpt-4o",
         messages: messages,
         response_format: { type: "json_object" },
-        max_tokens: 1000,
+        max_tokens: 4000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error("Moderation API request failed");
+      const errorData = await response.json().catch(() => ({}));
+      const errorMessage = errorData.error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      console.error("Moderation API error:", errorMessage, errorData);
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
-    const result = JSON.parse(data.choices[0].message.content);
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+      console.error("Invalid API response structure:", data);
+      throw new Error("Invalid response from moderation API");
+    }
+
+    const content = data.choices[0].message.content;
+    let result;
+    
+    try {
+      result = JSON.parse(content);
+    } catch (parseError) {
+      console.error("JSON parse error:", parseError, "Content:", content);
+      throw new Error("Failed to parse moderation response as JSON");
+    }
+
+    // Validate that result has required structure
+    if (!result.textChecks || !result.visualChecks || !result.countryEvaluation) {
+      console.error("Invalid result structure:", result);
+      throw new Error("Moderation response missing required fields");
+    }
+
     return result as ModerationResult;
   } catch (error) {
     console.error("Moderation error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     return {
       status: 'warning',
       textChecks: [],
@@ -356,9 +639,9 @@ IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 vi
       countryEvaluation: {
         country: country,
         status: 'warning',
-        reason: 'Error running moderation analysis'
+        reason: errorMessage
       },
-      summary: "Error running moderation analysis."
+      summary: `Error running moderation analysis: ${errorMessage}`
     };
   }
 };
@@ -482,9 +765,26 @@ export const ModPod = ({
     
     if (activeTab === 'video' && uploadedFile && apiKey) {
         setIsModerating(true);
-        const result = await moderateContent(transcript, videoFrames, apiKey, selectedRegion);
-        setModerationResult(result);
-        setIsModerating(false);
+        try {
+          const result = await moderateContent(transcript, videoFrames, apiKey, selectedRegion);
+          setModerationResult(result);
+        } catch (error) {
+          console.error("Error in handleModerate:", error);
+          const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+          setModerationResult({
+            status: 'warning',
+            textChecks: [],
+            visualChecks: [],
+            countryEvaluation: {
+              country: selectedRegion,
+              status: 'warning',
+              reason: errorMessage
+            },
+            summary: `Error: ${errorMessage}`
+          });
+        } finally {
+          setIsModerating(false);
+        }
     }
 
     // Simulate moderation and navigate to results (original logic preserved for other tabs)

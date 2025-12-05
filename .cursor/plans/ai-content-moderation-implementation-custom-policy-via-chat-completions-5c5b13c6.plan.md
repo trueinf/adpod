@@ -14,8 +14,8 @@ We will use the standard `https://api.openai.com/v1/chat/completions` endpoint (
 - **Prompting Strategy**:
 - We will make **one unified call** (or two parallel calls if payload is too large) containing:
 
-  1.  **System Prompt**: Your exact "Transcript Moderation Checklist" and "Frame Moderation Checklist" rules.
-  2.  **User Content**: The full Transcript text AND the sampled Image frames (base64).
+1.  **System Prompt**: Your exact "Transcript Moderation Checklist" and "Frame Moderation Checklist" rules.
+2.  **User Content**: The full Transcript text AND the sampled Image frames (base64).
 
 - **Output Format**: We will enforce `response_format: { type: "json_object" }` to get a structured list of violations.
 
