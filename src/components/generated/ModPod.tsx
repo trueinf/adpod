@@ -2,7 +2,7 @@ import React from 'react';
 import { Upload, FileText, Image as ImageIcon, Video, Globe, ChevronDown, Menu, X, HelpCircle, User, LayoutDashboard, FolderOpen, FileBarChart, Settings as SettingsIcon, LogOut, Search, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 type AdType = 'text' | 'image' | 'video';
-type Region = 'india' | 'us' | 'uk' | 'global';
+type Region = 'US' | 'UK' | 'IN' | 'SA' | 'KR';
 
 interface CheckResult {
   category: string;
@@ -11,10 +11,17 @@ interface CheckResult {
   timestamp?: string; // For visual checks
 }
 
+interface CountryEvaluation {
+  country: 'US' | 'UK' | 'IN' | 'SA' | 'KR';
+  status: 'pass' | 'fail' | 'warning';
+  reason?: string;
+}
+
 interface ModerationResult {
   status: 'pass' | 'fail' | 'warning';
   textChecks: CheckResult[];
   visualChecks: CheckResult[];
+  countryEvaluation: CountryEvaluation;
   summary: string;
 }
 
@@ -23,17 +30,20 @@ export interface ModPodProps {
   onNavigate?: (route: 'moderate' | 'results' | 'reports' | 'history' | 'rules' | 'profile' | 'logout') => void;
 }
 const regions = [{
-  value: 'india',
-  label: 'India'
-}, {
-  value: 'us',
+  value: 'US',
   label: 'United States'
 }, {
-  value: 'uk',
+  value: 'UK',
   label: 'United Kingdom'
 }, {
-  value: 'global',
-  label: 'Global'
+  value: 'IN',
+  label: 'India'
+}, {
+  value: 'SA',
+  label: 'Saudi Arabia'
+}, {
+  value: 'KR',
+  label: 'South Korea'
 }] as any[];
 const sidebarItems = [{
   icon: LayoutDashboard,
@@ -166,62 +176,144 @@ const transcribeVideo = async (file: File, apiKey: string): Promise<string> => {
   }
 };
 
-const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey: string): Promise<ModerationResult> => {
+const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey: string, country: Region): Promise<ModerationResult> => {
   // Sample 1 frame every 5 seconds (approx every 5th frame if 1fps, or adjust logic based on extraction)
   // Assuming frames are extracted 1/sec for first 60s, then 1/5sec.
   // We'll just take every 5th frame to be safe and reduce payload.
   const sampledFrames = frames.filter((_, i) => i % 5 === 0);
   
-  const systemPrompt = `
-    You are an expert Content Moderation AI. Analyze the provided Video Transcript and Video Frames against the following strict policy checklists.
-    
-    📝 Transcript Moderation Checklist:
-    1. Profanity & Offensive Language (swear words, slurs)
-    2. Sexual or Inappropriate Content (suggestive phrases, adult services)
-    3. Violent or Graphic Language (violence, weapons, gore)
-    4. Hate Speech or Discrimination (racist, sexist, derogatory)
-    5. Gambling-Related Phrases (betting, casinos, lotteries)
-    6. Alcohol, Tobacco, or Drug References (drinking, smoking, substances)
-    7. Political or Advocacy Messaging (parties, candidates, debates)
-    8. Misinformation / Misleading Claims (unrealistic promises, fake endorsements)
-    9. Calls to Action to Minors (addressing kids, "buy this toy")
+  const systemPrompt = `You are an expert Content Moderation AI.
 
-    🖼️ Frame (Image) Moderation Checklist:
-    1. Adult / Sexual Imagery (nudity, suggestive poses)
-    2. Violence or Graphic Imagery (blood, weapons, gore)
-    3. Drugs, Alcohol, Smoking (bottles, cigarettes, paraphernalia)
-    4. Gambling Visuals (chips, cards, betting interfaces)
-    5. Hate Symbols (Nazi, extremist signs)
-    6. Children in Unsafe Context (holding adult products, risky scenarios)
-    7. Political Symbols and Logos (campaign banners, flags)
-    8. Brand and Competitor Logos (Hulu, Prime Video, OnlyFans, etc.)
-    9. Illegal Items (firearms, counterfeits, explosives)
+Analyze the provided Video Transcript and Video Frames using the moderation checklist and apply the specific rules for the selected country.
 
-    Output a JSON object with this exact structure:
-    {
-      "status": "pass" | "fail" | "warning",
-      "textChecks": [
-        { "category": "Profanity & Offensive Language", "status": "pass" },
-        { "category": "Sexual or Inappropriate Content", "status": "fail", "reason": "Found suggestive phrase..." }
-        ... (one object for EACH of the 9 categories)
-      ],
-      "visualChecks": [
-        { "category": "Adult / Sexual Imagery", "status": "pass" },
-        { "category": "Violence or Graphic Imagery", "status": "warning", "reason": "Potential weapon...", "timestamp": "0:15" }
-         ... (one object for EACH of the 9 categories)
-      ],
-      "summary": "Brief explanation..."
-    }
+The country value will always be one of the following: US, UK, IN, SA, KR.
 
-    IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 visual categories, even if they pass. If a category passes, reason is optional.
-  `;
+Transcript Moderation Checklist
+
+Check the transcript for:
+
+Profanity & Offensive Language (swear words, slurs)
+
+Sexual or Inappropriate Content (suggestive phrases, adult services)
+
+Violent or Graphic Language (violence, threats, weapons, gore)
+
+Hate Speech or Discrimination (racism, sexism, religion, caste, disability)
+
+Gambling-Related Phrases (betting, casinos, fantasy sports, lotteries)
+
+Alcohol, Tobacco, or Drug References (drinking, smoking, cannabis)
+
+Political or Advocacy Messaging (candidates, parties, activism)
+
+Misinformation / Misleading Claims (unverified claims, false promises)
+
+Calls to Action to Minors (direct marketing to under 18)
+
+Frame (Image) Moderation Checklist
+
+Check each frame for:
+
+Adult / Sexual Imagery (nudity, lingerie, suggestive poses)
+
+Violence or Graphic Imagery (blood, weapons, injuries)
+
+Drugs, Alcohol, Smoking (bottles, cigarettes, vapes, cannabis)
+
+Gambling Visuals (chips, casino tables, betting screens)
+
+Hate Symbols (extremist flags, Nazi symbols)
+
+Children in Unsafe Contexts (danger, adult products)
+
+Political Symbols & Logos (campaign banners, flags, rallies)
+
+Brand & Competitor Logos (OnlyFans, Hulu, Netflix, alcohol logos, etc.)
+
+Illegal Items (firearms, counterfeit items, explosives)
+
+Country-Specific Rules
+
+Apply the following based on the selected country:
+
+🇺🇸 United States (US)
+
+Alcohol ads allowed only with 21+ disclaimer, no minors.
+
+Gambling allowed with 21+ and legal-state disclaimer.
+
+Cannabis allowed where legal, no minors, no medical claims without FDA.
+
+Political ads require funding disclosure and no misinformation.
+
+🇬🇧 United Kingdom (UK)
+
+Alcohol allowed but no binge drinking or linking to success/improved status.
+
+Gambling requires BeGambleAware.org or similar.
+
+Only non-psychoactive CBD allowed, no THC imagery.
+
+No guaranteed investment or crypto returns.
+
+🇮🇳 India (IN)
+
+Alcohol & tobacco ads banned, including surrogate branding.
+
+Gambling, betting & fantasy sports restricted, must follow regional legality.
+
+No caste or religion-based political messaging.
+
+No disrespect to national symbols or leaders.
+
+🇸🇦 Saudi Arabia (SA)
+
+Alcohol, gambling & pork images or references prohibited.
+
+No LGBTQ+ themes, sexually suggestive content, revealing clothing.
+
+Women must be portrayed in culturally appropriate attire.
+
+Religious material must respect Islamic values.
+
+🇰🇷 South Korea (KR)
+
+Alcohol allowed but no drunkenness & no minors under 19.
+
+Gambling mostly illegal; online gambling banned.
+
+Tobacco ads prohibited except factual info in adult context.
+
+Political messaging limited during election periods.
+
+Required JSON Output Format
+
+{
+  "status": "pass" | "fail" | "warning",
+  "textChecks": [
+    { "category": "Profanity & Offensive Language", "status": "pass" },
+    { "category": "Sexual or Inappropriate Content", "status": "fail", "reason": "Found suggestive phrase..." }
+  ],
+  "visualChecks": [
+    { "category": "Adult / Sexual Imagery", "status": "pass" },
+    { "category": "Violence or Graphic Imagery", "status": "warning", "reason": "Possible weapon", "timestamp": "0:15" }
+  ],
+  "countryEvaluation": {
+    "country": "<US | UK | IN | SA | KR>",
+    "status": "pass" | "fail" | "warning",
+    "reason": "Specific country rule violation if fail"
+  },
+  "summary": "Brief explanation"
+}
+
+IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 visual categories, even if they pass. If a category passes, reason is optional. The countryEvaluation must reflect whether the content violates any country-specific rules for the selected country: ${country}.`;
 
   const messages: any[] = [
     { role: "system", content: systemPrompt },
     { 
       role: "user", 
       content: [
-        { type: "text", text: `Transcript: "${transcript}"` },
+        { type: "text", text: `Analyze this content for country: ${country}\n\nTranscript: "${transcript}"` },
         ...sampledFrames.map((frame, index) => ({
           type: "image_url",
           image_url: {
@@ -261,6 +353,11 @@ const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey:
       status: 'warning',
       textChecks: [],
       visualChecks: [],
+      countryEvaluation: {
+        country: country,
+        status: 'warning',
+        reason: 'Error running moderation analysis'
+      },
       summary: "Error running moderation analysis."
     };
   }
@@ -272,7 +369,7 @@ export const ModPod = ({
   onNavigate
 }: ModPodProps) => {
   const [activeTab, setActiveTab] = React.useState<AdType>('video');
-  const [selectedRegion, setSelectedRegion] = React.useState<Region>('india');
+  const [selectedRegion, setSelectedRegion] = React.useState<Region>('US');
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [textContent, setTextContent] = React.useState('');
   const [uploadedFile, setUploadedFile] = React.useState<File | null>(null);
@@ -385,7 +482,7 @@ export const ModPod = ({
     
     if (activeTab === 'video' && uploadedFile && apiKey) {
         setIsModerating(true);
-        const result = await moderateContent(transcript, videoFrames, apiKey);
+        const result = await moderateContent(transcript, videoFrames, apiKey, selectedRegion);
         setModerationResult(result);
         setIsModerating(false);
     }
@@ -666,6 +763,39 @@ export const ModPod = ({
                                     </div>
                                   </div>
                                 </div>
+
+                                {/* Country Evaluation */}
+                                {moderationResult.countryEvaluation && (
+                                  <div className={`p-4 rounded-lg border mb-4 ${
+                                    moderationResult.countryEvaluation.status === 'pass' ? 'bg-green-500/10 border-green-500/50' : 
+                                    moderationResult.countryEvaluation.status === 'fail' ? 'bg-red-500/10 border-red-500/50' : 
+                                    'bg-yellow-500/10 border-yellow-500/50'
+                                  }`}>
+                                    <div className="flex items-start gap-3">
+                                      {moderationResult.countryEvaluation.status === 'pass' ? <CheckCircle className="text-green-500 shrink-0" /> : 
+                                       moderationResult.countryEvaluation.status === 'fail' ? <AlertCircle className="text-red-500 shrink-0" /> : 
+                                       <AlertTriangle className="text-yellow-500 shrink-0" />}
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <h5 className="font-bold text-white">Country-Specific Evaluation</h5>
+                                          <span className="text-xs px-2 py-0.5 bg-[#2a2a2a] rounded text-[#b3b3b3]">
+                                            {moderationResult.countryEvaluation.country}
+                                          </span>
+                                        </div>
+                                        <p className={`text-sm font-medium capitalize mb-1 ${
+                                          moderationResult.countryEvaluation.status === 'pass' ? 'text-green-400' : 
+                                          moderationResult.countryEvaluation.status === 'fail' ? 'text-red-400' : 
+                                          'text-yellow-400'
+                                        }`}>
+                                          {moderationResult.countryEvaluation.status}
+                                        </p>
+                                        {moderationResult.countryEvaluation.reason && (
+                                          <p className="text-sm text-[#b3b3b3]">{moderationResult.countryEvaluation.reason}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                   {/* Text Checks */}
