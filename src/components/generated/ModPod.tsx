@@ -2,7 +2,7 @@ import React from 'react';
 import { Upload, FileText, Image as ImageIcon, Video, Globe, ChevronDown, Menu, X, HelpCircle, User, LayoutDashboard, FolderOpen, FileBarChart, Settings as SettingsIcon, LogOut, Search, AlertTriangle, CheckCircle, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 type AdType = 'text' | 'image' | 'video';
-type Region = 'US' | 'UK' | 'IN' | 'SA' | 'KR';
+type Region = 'US' | 'UK' | 'IN' | 'SA';
 
 interface CheckResult {
   category: string;
@@ -12,7 +12,7 @@ interface CheckResult {
 }
 
 interface CountryEvaluation {
-  country: 'US' | 'UK' | 'IN' | 'SA' | 'KR';
+  country: 'US' | 'UK' | 'IN' | 'SA';
   status: 'pass' | 'fail' | 'warning';
   reason?: string;
 }
@@ -41,9 +41,6 @@ const regions = [{
 }, {
   value: 'SA',
   label: 'Saudi Arabia'
-}, {
-  value: 'KR',
-  label: 'South Korea'
 }] as any[];
 const sidebarItems = [{
   icon: LayoutDashboard,
@@ -238,29 +235,15 @@ const moderateContent = async (transcript: string, frames: VideoFrame[], apiKey:
 
 Analyze the provided Video Transcript and Video Frames using the moderation checklist and apply the specific rules for the selected country.
 
-The country value will always be one of the following: US, UK, IN, SA, KR.
+The country value will always be one of the following: US, UK, IN, SA.
 
 
 
-CRITICAL INSTRUCTIONS FOR COUNTRY-SPECIFIC ENFORCEMENT:
-
-1. Apply country-specific rules at the CATEGORY LEVEL (textChecks and visualChecks), not just in countryEvaluation. Each category check must reflect the strictness standards of the selected country.
-
-2. Saudi Arabia (SA) has ZERO TOLERANCE and MAXIMUM STRICTNESS:
-   - Any violation that would be "warning" in other countries MUST be "fail" for Saudi Arabia
-   - Any content with drugs, sexual imagery, illegal items, or children in unsafe contexts MUST automatically fail ALL relevant categories for SA
-   - When evaluating for Saudi Arabia, apply the strictest interpretation to EVERY category
-   - If ANY category fails for SA, the countryEvaluation.status MUST also be "fail"
-
-3. Strictness Hierarchy: SA (strictest) > IN > UK > KR > US (most lenient). Adjust category-level status accordingly.
+📝 Transcript Moderation Checklist
 
 
 
-Transcript Moderation Checklist
-
-
-
-Evaluate the transcript for:
+Check the transcript for:
 
 
 
@@ -300,11 +283,11 @@ Calls to Action to Minors (direct marketing to under 18)
 
 
 
-Frame (Image) Moderation Checklist
+🖼️ Frame (Image) Moderation Checklist
 
 
 
-Evaluate visuals for:
+Check each frame for:
 
 
 
@@ -344,19 +327,17 @@ Illegal Items (firearms, counterfeit items, explosives)
 
 
 
-Country-Specific Rules
-
-
+🌍 Country-Specific Rules
 
 🇺🇸 United States (US)
 
 
 
-Alcohol allowed with 21+ disclaimer, no minors, no binge drinking, no implication of success/attractiveness/fitness improvement
+Alcohol allowed with 21+ disclaimer; no minors; no binge drinking; no implication of success/attraction/performance improvement
 
 
 
-Gambling allowed with 21+ notice and state legality disclaimer, no guaranteed winnings
+Gambling allowed with 21+ and state legality messaging, responsible play promoted, no guaranteed winnings
 
 
 
@@ -364,15 +345,15 @@ Cannabis allowed where legal; no minors; no promotional smoking scenes; no unver
 
 
 
-Political ads must include funding disclosure, no misinformation or voter suppression
+Political ads must include funding disclosure; no misinformation or voter suppression
 
 
 
-Kissing: light & brief only; no passionate or sexualized kissing; no minors
+Kissing: light & brief only; no passionate/sexual; no minors
 
 
 
-Clothing: swimwear & casual attire allowed; no explicit lingerie or transparent clothing
+Clothing: swimwear and modern attire allowed; no explicit lingerie, transparent clothing, or sexual camera angles
 
 
 
@@ -380,27 +361,27 @@ Clothing: swimwear & casual attire allowed; no explicit lingerie or transparent 
 
 
 
-Alcohol allowed but no intoxication/excessive drinking or status-improvement claims
+Alcohol allowed but no intoxication or excessive consumption or success-related claims
 
 
 
-Gambling allowed with BeGambleAware.org messaging, no guaranteed returns
+Gambling requires BeGambleAware.org style messaging; no guaranteed winnings
 
 
 
-CBD allowed only if non-psychoactive; no recreational cannabis or smoking imagery
+CBD allowed only if non-psychoactive; no recreational cannabis or smoking scenes
 
 
 
-No guaranteed-profit financial claims
+No guaranteed-profit crypto or financial claims
 
 
 
-Kissing: short & natural only; no minors; no erotic kissing
+Kissing: short & natural; no minors; no erotic or prolonged scenes
 
 
 
-Clothing: modern fashion ok; no hyper-sexual posing or see-through lingerie
+Clothing: modern fashion allowed; no hyper-sexual posing or see-through lingerie
 
 
 
@@ -412,121 +393,55 @@ Alcohol & tobacco advertising fully banned, including surrogate branding
 
 
 
-Gambling/fantasy sports restricted by region; cannot promote income or minors participation
+Gambling/fantasy sports restricted; must follow regional legality; cannot promote income or minors involvement
 
 
 
-Religious/caste political messaging banned; no divisive content
+Religious or caste political messaging banned; no divisive or inflammatory content
 
 
 
-National symbols must be respected
+National symbols must be respected; cannot be altered, damaged, or mocked
 
 
 
-Kissing: minimal PG-13 only; no passionate/extended kissing; no minors
+Kissing: minimal PG-13 only; no passionate or long kissing; no minors
 
 
 
-Clothing: standard fashion ok; no lingerie, transparent clothing, sexual posing, cleavage focus
+Clothing: standard attire allowed; no lingerie modeling, transparent clothing, sexual posing, or cleavage emphasis
 
 
 
-🇸🇦 Saudi Arabia (SA) - STRICTEST STANDARDS - ZERO TOLERANCE POLICY
+🇸🇦 Saudi Arabia (SA)
 
 
 
-CRITICAL: Saudi Arabia has the strictest content moderation standards. Apply MAXIMUM STRICTNESS to ALL category checks.
+Alcohol, gambling, and pork strictly prohibited (visual or verbal)
 
 
 
-MANDATORY FAILURES (IMMEDIATE FAIL status required in relevant categories):
+Only Islamic-respectful religious advertising allowed; advertising or positive display referring to other religions, scriptures, rituals, places of worship, or symbols is not permitted
 
 
 
-- ANY drugs, illegal substances, or drug paraphernalia → "Drugs, Alcohol, Smoking" category = FAIL, "Illegal Items" category = FAIL
+No romantic or sexual content: any romantic kissing prohibited (including cheek kissing); no hugging or intimate touching
 
 
 
-- ANY sexual imagery, nudity, lingerie, suggestive poses, or adult content → "Adult / Sexual Imagery" category = FAIL
+Clothing must be modest: shoulders, chest, midriff, and legs above knee must be covered; no tight/body-con clothing; no swimwear; men must not be shirtless
 
 
 
-- ANY children in unsafe contexts, with adult products, or in dangerous situations → "Children in Unsafe Contexts" category = FAIL
+No nightclub, bar, party, or sensual dance scenes
 
 
 
-- ANY illegal items (firearms, explosives, counterfeit items) → "Illegal Items" category = FAIL
+No LGBTQ+ messaging or advocacy symbols
 
 
 
-- Alcohol, gambling, pork strictly prohibited (visually or verbally) → "Drugs, Alcohol, Smoking" = FAIL, "Gambling Visuals" = FAIL, "Gambling-Related Phrases" = FAIL
-
-
-
-- No LGBTQ+ symbols or messaging → "Hate Speech or Discrimination" or "Political or Advocacy Messaging" = FAIL
-
-
-
-- No romantic or sexual content; any romantic kissing prohibited (even brief/light); no romantic touching → "Adult / Sexual Imagery" = FAIL
-
-
-
-- Clothing violations: any exposed shoulders, chest, midriff, legs above knee; tight body-con clothing; swimwear; shirtless men → "Adult / Sexual Imagery" = FAIL
-
-
-
-- Religious content must be respectful and not commercialized; any disrespect = FAIL
-
-
-
-- No nightclub/party/sensual dancing scenes → "Adult / Sexual Imagery" = FAIL
-
-
-
-ENFORCEMENT RULES FOR SA:
-
-
-
-1. If content contains ANY of the above violations, the corresponding category MUST be marked as "fail" (not "warning")
-
-2. If ANY category fails, countryEvaluation.status MUST be "fail"
-
-3. Be more strict than other countries - content that might pass elsewhere should fail for SA
-
-4. Apply zero tolerance - even minor violations should be flagged
-
-
-
-🇰🇷 South Korea (KR)
-
-
-
-Alcohol allowed without intoxication or minors (under 19)
-
-
-
-Gambling mostly illegal; no online betting visuals
-
-
-
-Tobacco/e-cigarette ads banned except neutral info
-
-
-
-Political messaging restricted during elections
-
-
-
-Kissing: short/light only, no passionate or minors
-
-
-
-Clothing: modern fashion allowed; no lingerie-style outfits or sexual posing
-
-
-
-Required JSON Output Format
+🧾 Required JSON Output Format
 
 {
 
@@ -578,7 +493,7 @@ Required JSON Output Format
 
   "countryEvaluation": {
 
-    "country": "US | UK | IN | SA | KR",
+    "country": "US | UK | IN | SA",
 
     "status": "pass | fail | warning",
 
@@ -589,12 +504,6 @@ Required JSON Output Format
   "summary": ""
 
 }
-
-
-
-IMPORTANT: You MUST return a check result for ALL 9 text categories and ALL 9 visual categories, even if they pass. If a category passes, reason is optional. 
-
-For Saudi Arabia (SA): Apply ZERO TOLERANCE. If content contains drugs, sexual imagery, illegal items, or children in unsafe contexts, those categories MUST be marked "fail" and countryEvaluation.status MUST be "fail". Be stricter than other countries - what might be "warning" elsewhere should be "fail" for SA.
 
 The countryEvaluation must reflect whether the content violates any country-specific rules for the selected country: ${country}.`;
 
