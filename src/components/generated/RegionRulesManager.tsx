@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 export interface RegionRulesManagerProps {
   onNavigate?: (route: 'moderate' | 'results' | 'reports' | 'history' | 'rules' | 'profile' | 'logout') => void;
 }
-type Region = 'india' | 'us' | 'uk' | 'global';
-type RuleCategory = 'profanity' | 'violence' | 'discrimination' | 'adult' | 'misinformation' | 'copyright';
+type Region = 'US' | 'UK' | 'IN' | 'SA';
+type RuleCategory = 'profanity' | 'sexual' | 'violence' | 'hate-speech' | 'gambling' | 'alcohol-drugs' | 'political' | 'misinformation' | 'minors' | 'adult-imagery' | 'gambling-visuals' | 'hate-symbols' | 'children-unsafe' | 'political-symbols' | 'brand-logos' | 'illegal-items';
 interface Rule {
   id: string;
   category: RuleCategory;
   keyword: string;
+  description: string;
   severity: 'low' | 'medium' | 'high';
   enabled: boolean;
 }
@@ -21,132 +22,249 @@ interface RegionConfig {
   threshold: number;
 }
 const mockRegionConfigs: RegionConfig[] = [{
-  region: 'india',
-  label: 'India',
-  flag: '🇮🇳',
-  rules: [{
-    id: '1',
-    category: 'profanity',
-    keyword: 'offensive term',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '2',
-    category: 'violence',
-    keyword: 'violent imagery',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '3',
-    category: 'discrimination',
-    keyword: 'hate speech',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '4',
-    category: 'adult',
-    keyword: 'explicit content',
-    severity: 'medium',
-    enabled: true
-  }],
-  threshold: 3
-}, {
-  region: 'us',
+  region: 'US',
   label: 'United States',
   flag: '🇺🇸',
   rules: [{
-    id: '5',
-    category: 'profanity',
-    keyword: 'profane language',
+    id: 'us-1',
+    category: 'alcohol-drugs',
+    keyword: 'Alcohol with 21+ disclaimer',
+    description: 'Alcohol allowed with 21+ disclaimer; no minors; no binge drinking; no implication of success/attraction/performance improvement',
     severity: 'medium',
     enabled: true
   }, {
-    id: '6',
-    category: 'violence',
-    keyword: 'graphic violence',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '7',
-    category: 'misinformation',
-    keyword: 'false claims',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '8',
-    category: 'copyright',
-    keyword: 'unauthorized use',
-    severity: 'medium',
-    enabled: true
-  }],
-  threshold: 2
-}, {
-  region: 'uk',
-  label: 'United Kingdom',
-  flag: '🇬🇧',
-  rules: [{
-    id: '9',
-    category: 'profanity',
-    keyword: 'offensive content',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '10',
-    category: 'discrimination',
-    keyword: 'discriminatory language',
-    severity: 'high',
-    enabled: true
-  }, {
-    id: '11',
-    category: 'adult',
-    keyword: 'adult content',
+    id: 'us-2',
+    category: 'gambling',
+    keyword: 'Gambling with 21+ and state legality',
+    description: 'Gambling allowed with 21+ and state legality messaging, responsible play promoted, no guaranteed winnings',
     severity: 'medium',
     enabled: true
   }, {
-    id: '12',
-    category: 'misinformation',
-    keyword: 'misleading info',
+    id: 'us-3',
+    category: 'alcohol-drugs',
+    keyword: 'Cannabis where legal',
+    description: 'Cannabis allowed where legal; no minors; no promotional smoking scenes; no unverified medical claims',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'us-4',
+    category: 'political',
+    keyword: 'Political ads with funding disclosure',
+    description: 'Political ads must include funding disclosure; no misinformation or voter suppression',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'us-5',
+    category: 'adult-imagery',
+    keyword: 'Kissing: light & brief only',
+    description: 'Kissing: light & brief only; no passionate/sexual; no minors',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'us-6',
+    category: 'adult-imagery',
+    keyword: 'Clothing: swimwear allowed',
+    description: 'Clothing: swimwear and modern attire allowed; no explicit lingerie, transparent clothing, or sexual camera angles',
     severity: 'medium',
     enabled: true
   }],
   threshold: 3
 }, {
-  region: 'global',
-  label: 'Global',
-  flag: '🌍',
+  region: 'UK',
+  label: 'United Kingdom',
+  flag: '🇬🇧',
   rules: [{
-    id: '13',
-    category: 'violence',
-    keyword: 'extreme violence',
+    id: 'uk-1',
+    category: 'alcohol-drugs',
+    keyword: 'Alcohol without intoxication',
+    description: 'Alcohol allowed but no intoxication or excessive consumption or success-related claims',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'uk-2',
+    category: 'gambling',
+    keyword: 'Gambling with BeGambleAware.org',
+    description: 'Gambling requires BeGambleAware.org style messaging; no guaranteed winnings',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'uk-3',
+    category: 'alcohol-drugs',
+    keyword: 'CBD only if non-psychoactive',
+    description: 'CBD allowed only if non-psychoactive; no recreational cannabis or smoking scenes',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'uk-4',
+    category: 'misinformation',
+    keyword: 'No guaranteed-profit crypto claims',
+    description: 'No guaranteed-profit crypto or financial claims',
     severity: 'high',
     enabled: true
   }, {
-    id: '14',
-    category: 'discrimination',
-    keyword: 'hate content',
+    id: 'uk-5',
+    category: 'adult-imagery',
+    keyword: 'Kissing: short & natural',
+    description: 'Kissing: short & natural; no minors; no erotic or prolonged scenes',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'uk-6',
+    category: 'adult-imagery',
+    keyword: 'Clothing: modern fashion',
+    description: 'Clothing: modern fashion allowed; no hyper-sexual posing or see-through lingerie',
+    severity: 'medium',
+    enabled: true
+  }],
+  threshold: 3
+}, {
+  region: 'IN',
+  label: 'India',
+  flag: '🇮🇳',
+  rules: [{
+    id: 'in-1',
+    category: 'alcohol-drugs',
+    keyword: 'Alcohol & tobacco fully banned',
+    description: 'Alcohol & tobacco advertising fully banned, including surrogate branding',
     severity: 'high',
     enabled: true
   }, {
-    id: '15',
-    category: 'adult',
-    keyword: 'nsfw content',
+    id: 'in-2',
+    category: 'gambling',
+    keyword: 'Gambling/fantasy sports restricted',
+    description: 'Gambling/fantasy sports restricted; must follow regional legality; cannot promote income or minors involvement',
     severity: 'high',
+    enabled: true
+  }, {
+    id: 'in-3',
+    category: 'political',
+    keyword: 'Religious/caste messaging banned',
+    description: 'Religious or caste political messaging banned; no divisive or inflammatory content',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'in-4',
+    category: 'political-symbols',
+    keyword: 'National symbols must be respected',
+    description: 'National symbols must be respected; cannot be altered, damaged, or mocked',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'in-5',
+    category: 'adult-imagery',
+    keyword: 'Kissing: minimal PG-13 only',
+    description: 'Kissing: minimal PG-13 only; no passionate or long kissing; no minors',
+    severity: 'medium',
+    enabled: true
+  }, {
+    id: 'in-6',
+    category: 'adult-imagery',
+    keyword: 'Clothing: standard attire',
+    description: 'Clothing: standard attire allowed; no lingerie modeling, transparent clothing, sexual posing, or cleavage emphasis',
+    severity: 'medium',
     enabled: true
   }],
   threshold: 2
+}, {
+  region: 'SA',
+  label: 'Saudi Arabia',
+  flag: '🇸🇦',
+  rules: [{
+    id: 'sa-1',
+    category: 'alcohol-drugs',
+    keyword: 'Alcohol strictly prohibited',
+    description: 'Alcohol, gambling, and pork strictly prohibited (visual or verbal)',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-2',
+    category: 'gambling',
+    keyword: 'Gambling strictly prohibited',
+    description: 'Gambling strictly prohibited (visual or verbal)',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-3',
+    category: 'political',
+    keyword: 'Only Islamic-respectful religious ads',
+    description: 'Only Islamic-respectful religious advertising allowed; advertising or positive display referring to other religions, scriptures, rituals, places of worship, or symbols is not permitted',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-4',
+    category: 'adult-imagery',
+    keyword: 'No romantic or sexual content',
+    description: 'No romantic or sexual content: any romantic kissing prohibited (including cheek kissing); no hugging or intimate touching',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-5',
+    category: 'adult-imagery',
+    keyword: 'Modest clothing required',
+    description: 'Clothing must be modest: shoulders, chest, midriff, and legs above knee must be covered; no tight/body-con clothing; no swimwear; men must not be shirtless',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-6',
+    category: 'adult-imagery',
+    keyword: 'No nightclub/bar/party scenes',
+    description: 'No nightclub, bar, party, or sensual dance scenes',
+    severity: 'high',
+    enabled: true
+  }, {
+    id: 'sa-7',
+    category: 'hate-speech',
+    keyword: 'No LGBTQ+ messaging',
+    description: 'No LGBTQ+ messaging or advocacy symbols',
+    severity: 'high',
+    enabled: true
+  }],
+  threshold: 1
 }];
 const categoryColors: Record<RuleCategory, string> = {
   profanity: 'bg-orange-500/20 text-orange-400 border-orange-500/50',
+  sexual: 'bg-pink-500/20 text-pink-400 border-pink-500/50',
   violence: 'bg-red-500/20 text-red-400 border-red-500/50',
-  discrimination: 'bg-purple-500/20 text-purple-400 border-purple-500/50',
-  adult: 'bg-pink-500/20 text-pink-400 border-pink-500/50',
+  'hate-speech': 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+  gambling: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+  'alcohol-drugs': 'bg-amber-500/20 text-amber-400 border-amber-500/50',
+  political: 'bg-blue-500/20 text-blue-400 border-blue-500/50',
   misinformation: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
-  copyright: 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+  minors: 'bg-red-500/20 text-red-400 border-red-500/50',
+  'adult-imagery': 'bg-pink-500/20 text-pink-400 border-pink-500/50',
+  'gambling-visuals': 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50',
+  'hate-symbols': 'bg-purple-500/20 text-purple-400 border-purple-500/50',
+  'children-unsafe': 'bg-red-500/20 text-red-400 border-red-500/50',
+  'political-symbols': 'bg-blue-500/20 text-blue-400 border-blue-500/50',
+  'brand-logos': 'bg-gray-500/20 text-gray-400 border-gray-500/50',
+  'illegal-items': 'bg-red-500/20 text-red-400 border-red-500/50'
 };
 const severityColors = {
   low: 'bg-green-500/20 text-green-400',
   medium: 'bg-yellow-500/20 text-yellow-400',
   high: 'bg-red-500/20 text-red-400'
+};
+
+const formatCategoryName = (category: RuleCategory): string => {
+  const categoryMap: Record<RuleCategory, string> = {
+    profanity: 'Profanity',
+    sexual: 'Sexual Content',
+    violence: 'Violence',
+    'hate-speech': 'Hate Speech',
+    gambling: 'Gambling',
+    'alcohol-drugs': 'Alcohol/Drugs',
+    political: 'Political',
+    misinformation: 'Misinformation',
+    minors: 'Minors',
+    'adult-imagery': 'Adult Imagery',
+    'gambling-visuals': 'Gambling Visuals',
+    'hate-symbols': 'Hate Symbols',
+    'children-unsafe': 'Children Unsafe',
+    'political-symbols': 'Political Symbols',
+    'brand-logos': 'Brand Logos',
+    'illegal-items': 'Illegal Items'
+  };
+  return categoryMap[category] || category;
 };
 const sidebarItems = [{
   icon: LayoutDashboard,
@@ -188,7 +306,7 @@ export const RegionRulesManager = ({
   onNavigate
 }: RegionRulesManagerProps) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [selectedRegion, setSelectedRegion] = useState<Region>('india');
+  const [selectedRegion, setSelectedRegion] = useState<Region>('US');
   const [regionConfigs, setRegionConfigs] = useState(mockRegionConfigs);
   const [editingRule, setEditingRule] = useState<string | null>(null);
   const [addingRule, setAddingRule] = useState(false);
@@ -353,11 +471,21 @@ export const RegionRulesManager = ({
                     <select value={filterCategory} onChange={e => setFilterCategory(e.target.value as RuleCategory | 'all')} className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-4 py-2 text-[#e5e5e5] focus:outline-none focus:ring-2 focus:ring-[#e50914]">
                       <option value="all">All Categories</option>
                       <option value="profanity">Profanity</option>
+                      <option value="sexual">Sexual Content</option>
                       <option value="violence">Violence</option>
-                      <option value="discrimination">Discrimination</option>
-                      <option value="adult">Adult Content</option>
+                      <option value="hate-speech">Hate Speech</option>
+                      <option value="gambling">Gambling</option>
+                      <option value="alcohol-drugs">Alcohol/Drugs</option>
+                      <option value="political">Political</option>
                       <option value="misinformation">Misinformation</option>
-                      <option value="copyright">Copyright</option>
+                      <option value="minors">Minors</option>
+                      <option value="adult-imagery">Adult Imagery</option>
+                      <option value="gambling-visuals">Gambling Visuals</option>
+                      <option value="hate-symbols">Hate Symbols</option>
+                      <option value="children-unsafe">Children Unsafe</option>
+                      <option value="political-symbols">Political Symbols</option>
+                      <option value="brand-logos">Brand Logos</option>
+                      <option value="illegal-items">Illegal Items</option>
                     </select>
                   </div>
                 </div>
@@ -392,13 +520,16 @@ export const RegionRulesManager = ({
                             <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
                                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${categoryColors[rule.category]}`}>
-                                  {rule.category}
+                                  {formatCategoryName(rule.category)}
                                 </span>
                                 <span className={`px-2 py-1 rounded text-xs font-bold ${severityColors[rule.severity]}`}>
                                   {rule.severity}
                                 </span>
                               </div>
                               <p className="font-medium mb-1">{rule.keyword}</p>
+                              {rule.description && (
+                                <p className="text-sm text-[#808080] mt-1">{rule.description}</p>
+                              )}
                               <div className="flex items-center gap-2">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                   <input type="checkbox" checked={rule.enabled} onChange={() => toggleRule(rule.id)} className="w-4 h-4 bg-[#0d0d0d] border-[#2a2a2a] rounded accent-[#e50914]" />
