@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Zap, Globe, AlertCircle, User, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Shield, Zap, Globe, AlertCircle, User, CheckCircle, PlayCircle } from 'lucide-react';
 import { signIn, signUp } from '../../lib/supabase';
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
+  onDemoLogin?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess, onDemoLogin }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -581,6 +582,42 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
               )}
             </motion.button>
           </motion.form>
+
+          {/* Demo User Button - Only show on Sign In */}
+          {!isSignUp && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="mt-4"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-[#2a2a2a]"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-[#0a0a0a] text-[#808080]">or</span>
+                </div>
+              </div>
+              <motion.button
+                type="button"
+                onClick={() => {
+                  if (onDemoLogin) {
+                    onDemoLogin();
+                  } else {
+                    onLoginSuccess();
+                  }
+                }}
+                disabled={isLoading}
+                whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
+                className="w-full mt-4 bg-[#1a1a1a] hover:bg-[#2a2a2a] border-2 border-[#2a2a2a] hover:border-[#404040] text-white font-bold py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+              >
+                <PlayCircle className="w-5 h-5 text-[#e50914]" />
+                <span>Continue as Demo User</span>
+              </motion.button>
+            </motion.div>
+          )}
 
           {/* Toggle Sign In / Sign Up */}
           <motion.p

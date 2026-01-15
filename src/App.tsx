@@ -17,6 +17,7 @@ let container: Container = 'none';
 
 function App() {
   const [session, setSession] = useState<Session | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentView, setCurrentView] = useState<'moderate' | 'results' | 'reports' | 'detailed-report' | 'history' | 'rules' | 'profile'>('moderate');
   const [currentResultId, setCurrentResultId] = useState<string | null>(null);
@@ -43,9 +44,15 @@ function App() {
     // Session will be updated automatically via onAuthStateChange
   };
 
+  const handleDemoLogin = () => {
+    setIsDemoMode(true);
+    setIsLoading(false);
+  };
+
   const handleLogout = async () => {
     await signOut();
     setSession(null);
+    setIsDemoMode(false);
     setCurrentView('moderate');
   };
 
@@ -156,9 +163,9 @@ function App() {
     );
   }
 
-  // Show login screen if not authenticated
-  if (!session) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  // Show login screen if not authenticated and not in demo mode
+  if (!session && !isDemoMode) {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} onDemoLogin={handleDemoLogin} />;
   }
 
   if (container === 'centered') {
